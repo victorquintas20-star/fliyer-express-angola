@@ -2,10 +2,25 @@ name: Gerar APK Fliyer Express
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fliyer-express-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    name: Build debug APK
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Baixar projeto
@@ -16,14 +31,22 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
+
       - name: Dar permissão ao Gradle
-        run: chmod +x gradlew
+        run: chmod +x ./gradlew
+
+      - name: Executar testes
+        run: ./gradlew testDebugUnitTest
+        continue-on-error: false
 
       - name: Gerar APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
         with:
           name: FliyerExpress-APK
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
